@@ -14,12 +14,12 @@ People selling a used phone in the Philippines guess their asking price from a f
 
 ## Solution
 
-Listo turns pricing into a one-click order. The seller picks how fresh the price data must be and pays a 1 test XLM fee through a Velo checkout. An AI agent then compares two paid research sellers, picks the cheapest one that meets the freshness requirement and its own spending policy, and pays that seller from a Noir allowance it controls. The seller gets a suggested price (the median of the comparable listings the agent bought), every source listing with its link and date, and a receipt with Stellar Expert links for each payment.
+Listo turns pricing into a one-click order. The seller picks how fresh the price data must be and pays a 1 test XLM fee through a Velo checkout. A rule-based agent then compares two paid research sellers (run by our team, each selling a dated snapshot of real listings), picks the cheapest one that meets the freshness requirement and its own spending policy, and pays that seller from a Noir allowance it controls. The seller gets a suggested price (the median of the comparable listings the agent bought), every source listing with its link and date, and a receipt with Stellar Expert links for each payment.
 
 ## How the agentic payment works
 
 1. **The seller pays the fee.** The browser sends only the product and freshness choice. The server creates a Velo checkout session for 1 XLM and saves its payment intent. Velo confirms the payment on the ledger and sends a signed `payment.succeeded` webhook; the server verifies it and queues exactly one job. This is the seller-authorized payment that starts the job.
-2. **The agent decides whom to pay.** The worker takes the job and looks at two research offers: Basic research (1 XLM) and Recent research (2 XLM), each a dated snapshot of real listings. It drops offers whose data is older than the seller's limit (30 days flexible, 12 hours strict), asks Noir's `checkPayment` whether its allowance covers each remaining offer, and picks the cheapest that passes. The full decision trace is saved and shown to the seller.
+2. **The agent decides whom to pay.** The worker takes the job and looks at two research offers: Basic research (1 XLM) and Recent research (2 XLM), each a dated snapshot of real listings. Recent research is refreshed by `npm run recheck-prices`; strict orders can only buy it while it is under 12 hours old. It drops offers whose data is older than the seller's limit (30 days flexible, 12 hours strict), asks Noir's `checkPayment` whether its allowance covers each remaining offer, and picks the cheapest that passes. The full decision trace is saved and shown to the seller.
 3. **The agent pays.** Before touching the chain, the worker saves the purchase with its merchant, amount and nonce. It then calls Noir's `authorizePayment` with its own agent key, moving the amount from the device escrow into the chosen research seller's pending balance. The policy allows only XLM, at most 2.5 XLM per payment, until 2026-11-09 00:00 Manila; each device escrow holds 5 XLM.
 4. **The research seller collects.** The worker checks the seller's pending balance matches the purchase, then the seller's key calls `claim`.
 5. **The seller gets the price.** The listing is built from the purchased snapshot: median price, source links, dates.
@@ -53,7 +53,7 @@ Safety rules that keep one payment per order:
 - **Webhooks:** the raw body's signature is verified, each `x-velo-delivery` ID is recorded once, and only an event whose payment intent, amount and asset match a saved job can queue work. Dashboard test events (`test: true`) are recorded and ignored.
 - **One transition:** a job leaves `awaiting_payment` once, in the same database transaction that records the delivery.
 - **Unknown outcomes:** the nonce is saved before the Noir call. If the server stops mid-payment, the job goes to `review` and purchases pause. Once the original transaction can no longer land (Noir SDK transactions expire after 300 seconds), the worker replays the saved authorization as a simulation: the contract rejects a used nonce with `DuplicateAuth`, so an unused nonce proves nothing was paid and the job is safely requeued.
-- **Redeploys:** on `SIGTERM` the worker finishes the payment in flight before exiting.
+- **Redeploys:** on `SIGTERM` the worker tries to finish the payment in flight before exiting. If the process is killed first, the review and replay rule above covers it; order `69d890dd` in [docs/evidence.md](docs/evidence.md) recovered this way.
 
 ## Noir integration
 
@@ -114,7 +114,7 @@ docs/             Evidence, operations runbook, write-up, screenshots
 
 1. Install Node 26.13.0 (see `.node-version`). You need a Velo Testnet project and API key from [velo-build.dev](https://www.velo-build.dev), and a Testnet wallet such as Varial (formerly Freighter) to pay the checkout.
 2. Run `npm install` at the root.
-3. Copy `.env.example` to `.env` and set `VELO_API_KEY` and `VELO_WEBHOOK_SECRET`.
+3. Copy `.env.example` to `.env` and set `VELO_API_KEY`, `VELO_WEBHOOK_SECRET`, and `PUBLIC_BASE_URL=http://localhost:5173` (where Velo sends the seller back after paying).
 4. Run `npm run noir:setup -- --count 2`. It creates and funds the owner, agent and two research-seller accounts with Friendbot, writes their secrets to `.env`, provisions two Noir devices, and prints the `DEVICE_HASHES` line to add to `.env`.
 5. Start the server and web app in two terminals: `npm run dev:server` (API on port 3000) and `npm run dev:web`.
 

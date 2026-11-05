@@ -26,8 +26,24 @@ The script stops without writing if a page changes layout, a price is outside â‚
 
 A job goes to `review` when the server can't tell whether the agent's Noir payment reached the chain, for example after a restart mid-payment. New purchases pause until it resolves.
 
-1. Wait 6 minutes. Noir SDK transactions expire after 300 seconds, so after that the worker replays the saved authorization as a simulation. If the nonce was never used, it requeues the job and pays once.
-2. If the job is still in `review` and its purchase shows `needs_operator`, the original payment did land. Find it on [Stellar Expert](https://stellar.expert/explorer/testnet) under the agent's account and finish the order by hand.
+To see why, query the database on the Railway volume (`$DATA_DIR/goats.db`) with any SQLite client:
+
+```sql
+SELECT j.id, j.error, p.status, p.error, p.auth_hash, p.claim_hash
+FROM jobs j LEFT JOIN purchases p ON p.job_id = j.id
+WHERE j.status = 'review';
+```
+
+There is no admin endpoint yet, and the Railway console's shell doesn't have `node` on its PATH, so this needs direct access to the volume.
+
+| What you see | What happened | What to do |
+| --- | --- | --- |
+| No `auth_hash`, purchase `authorizing` or `unknown` | Interrupted while authorizing | Wait 6 minutes. Noir SDK transactions expire after 300 seconds; the worker then replays the saved authorization as a simulation and, if the nonce was never used, requeues the job and pays once. |
+| Purchase `needs_operator`, error says the authorization reached the chain | The payment landed but its hash wasn't recorded | Find it on [Stellar Expert](https://stellar.expert/explorer/testnet) under the agent's account, then finish the order by hand. |
+| Purchase `needs_operator`, error starts with `reconcile failed:` | The simulation itself failed, so the outcome is still unknown | Read the error, fix the cause (often RPC), then set the purchase back to `unknown` so the worker retries. |
+| `auth_hash` set, no `claim_hash` (job was `claiming`, or purchase `claim_failed`) | The agent paid but the research seller's claim didn't finish | Never retried automatically. Have the seller claim (its key is `MERCHANT_BASIC_SECRET` or `MERCHANT_RECENT_SECRET`), then close the job. |
+
+To release the pause once an order is resolved: `UPDATE jobs SET status = 'blocked', error = 'resolved by operator' WHERE id = '<job id>';`
 
 ## Deploys
 

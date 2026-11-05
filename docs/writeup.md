@@ -6,7 +6,7 @@ Someone selling a used phone in the Philippines usually guesses the asking price
 
 ## How the agent works
 
-The seller chooses how fresh the price data must be and pays a small fee. From then on an AI agent does the work. It looks at two paid research sellers: Basic research is cheaper but older, Recent research costs more but was collected within the last 12 hours. The agent drops any seller whose data is too old for the seller's choice, asks Noir whether its own spending policy allows each remaining payment, and buys from the cheapest seller that passes. It records every step of that decision. It then builds the listing from the data it bought: a suggested price (the median of comparable listings) with a link and date for every source.
+The seller chooses how fresh the price data must be and pays a small fee. From then on a rule-based agent does the work. It looks at two paid research sellers, run by our team, each selling a dated snapshot of real Philippine listings: Basic research is cheaper but older, Recent research costs more and is refreshed by a re-check script so it stays under 12 hours old. The agent drops any seller whose data is too old for the seller's choice, asks Noir whether its own spending policy allows each remaining payment, and buys from the cheapest seller that passes. It records every step of that decision. It then builds the listing from the data it bought: a suggested price (the median of comparable listings) with a link and date for every source.
 
 The agent, not a person, decides whom to pay and how much, and it signs the payment with its own constrained key. Changing the freshness setting changes the decision: a flexible order pays the Basic seller 1 XLM, a strict order pays the Recent seller 2 XLM.
 
