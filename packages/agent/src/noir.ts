@@ -24,7 +24,11 @@ export const explorerTx = (hash: string) => `https://stellar.expert/explorer/tes
 export function requireSecret(name: string): Keypair {
   const secret = process.env[name];
   if (!secret) throw new Error(`${name} is not set`);
-  return Keypair.fromSecret(secret);
+  try {
+    return Keypair.fromSecret(secret.trim());
+  } catch {
+    throw new Error(`${name} is not a valid Stellar secret key (expected 56 characters starting with S, no quotes)`);
+  }
 }
 
 export function describeError(err: unknown): string {
