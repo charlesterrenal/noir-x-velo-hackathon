@@ -179,18 +179,23 @@ export function startWorker() {
     return;
   }
   recoverAfterRestart();
-  let busy = false;
-  setInterval(async () => {
-    if (busy) return;
-    busy = true;
-    try {
-      const id = await runOnce(deps);
-      if (id) console.log('worker', JSON.stringify(db.prepare('SELECT id, status, error FROM jobs WHERE id = ?').get(id)));
-    } catch (err) {
-      console.error('worker error', describeError(err));
-    } finally {
-      busy = false;
-    }
+  let current: Promise<void> | null = null;
+  const timer = setInterval(() => {
+    if (current) return;
+    current = runOnce(deps)
+      .then((id) => {
+        if (id) console.log('worker', JSON.stringify(db.prepare('SELECT id, status, error FROM jobs WHERE id = ?').get(id)));
+      })
+      .catch((err) => console.error('worker error', describeError(err)))
+      .finally(() => (current = null));
   }, 3000);
+
+  // On redeploy, finish the payment in flight instead of leaving it for manual review.
+  process.once('SIGTERM', async () => {
+    clearInterval(timer);
+    console.log('worker stopping: finishing current job');
+    await current;
+    process.exit(0);
+  });
   console.log('worker started');
 }
