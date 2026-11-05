@@ -4,12 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The GOATS</title>
+    <meta name="description" content="An agent buys price research for your listing and pays for it on Stellar Testnet." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <main id="app">
-      <h1>The GOATS</h1>
-      <p>Stellar Testnet demo. Test XLM only.</p>
-      <p id="health">Checking server…</p>
+    <header class="top">
+      <span class="brand">The GOATS</span>
+      <span class="net">Runs on Stellar Testnet with test XLM only</span>
+    </header>
+    <main class="layout">
+      <section class="work" id="work" aria-live="polite"></section>
+      <aside class="receipt-wrap" id="receipt" aria-label="Receipt"></aside>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
