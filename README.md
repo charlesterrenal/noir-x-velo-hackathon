@@ -62,16 +62,16 @@ Safety rules that keep one payment per order:
 
 | SDK call | Who signs | Where |
 | --- | --- | --- |
-| Contract ID check on startup | none | [packages/agent/src/noir.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/packages/agent/src/noir.ts#L11) |
-| `execute` `registerDevice` | owner | [scripts/noir-setup.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/scripts/noir-setup.ts#L53) |
-| `execute` `registerAgent` | owner | [scripts/noir-setup.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/scripts/noir-setup.ts#L67) |
-| `execute` `fundEscrow` | owner | [scripts/noir-setup.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/scripts/noir-setup.ts#L80) |
-| `checkPayment` with `requireEscrow` | none (read) | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/worker.ts#L125) |
-| `authorizePayment` with a saved nonce | agent | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/worker.ts#L160) |
-| `claim` | research seller | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/worker.ts#L191) |
-| `prepare` to replay an unknown authorization | none (simulation) | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/worker.ts#L79) |
+| Contract ID check on startup | none | [packages/agent/src/noir.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/packages/agent/src/noir.ts#L11) |
+| `execute` `registerDevice` | owner | [scripts/noir-setup.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/scripts/noir-setup.ts#L53) |
+| `execute` `registerAgent` | owner | [scripts/noir-setup.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/scripts/noir-setup.ts#L67) |
+| `execute` `fundEscrow` | owner | [scripts/noir-setup.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/scripts/noir-setup.ts#L80) |
+| `checkPayment` with `requireEscrow` | none (read) | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/worker.ts#L125) |
+| `authorizePayment` with a saved nonce | agent | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/worker.ts#L160) |
+| `claim` | research seller | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/worker.ts#L191) |
+| `prepare` to replay an unknown authorization | none (simulation) | [apps/server/src/worker.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/worker.ts#L79) |
 
-The agent's choice of seller is [`selectOffer`](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/packages/agent/src/offers.ts#L80). The purchase and nonce are saved [before the chain write](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/worker.ts#L152).
+The agent's choice of seller is [`selectOffer`](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/packages/agent/src/offers.ts#L83). The purchase and nonce are saved [before the chain write](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/worker.ts#L152).
 
 ## Velo integration
 
@@ -80,14 +80,14 @@ The agent's choice of seller is [`selectOffer`](https://github.com/charlesterren
 
 | Use | Where |
 | --- | --- |
-| Create a checkout session with an idempotency key per job | [apps/server/src/jobs.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/jobs.ts#L54) |
-| Webhook route on the raw body, before any JSON parser | [apps/server/src/index.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/index.ts#L12) |
-| `Velo.webhooks.verify` | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/velo.ts#L54) |
-| Delivery dedupe on `x-velo-delivery` | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/velo.ts#L73) |
-| Test events recorded but never queued | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/velo.ts#L78) |
-| Intent, amount and asset match, then the single transition to `queued` | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/velo.ts#L92) |
+| Create a checkout session with an idempotency key per job | [apps/server/src/jobs.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/jobs.ts#L54) |
+| Webhook route on the raw body, before any JSON parser | [apps/server/src/index.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/index.ts#L12) |
+| `Velo.webhooks.verify` | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/velo.ts#L54) |
+| Delivery dedupe on `x-velo-delivery` | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/velo.ts#L73) |
+| Test events recorded but never queued | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/velo.ts#L78) |
+| Intent, amount and asset match, then the single transition to `queued` | [apps/server/src/velo.ts](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/velo.ts#L92) |
 
-One workaround: the live Testnet backend sends `project.registryProjectId` as a number, which the SDK's shape check rejects after the HMAC has already matched. In that case only, the server [parses the fields it needs itself](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/986bca3f721d/apps/server/src/velo.ts#L59). Payloads with a bad signature are still rejected.
+One workaround: the live Testnet backend sends `project.registryProjectId` as a number, which the SDK's shape check rejects after the HMAC has already matched. In that case only, the server [parses the fields it needs itself](https://github.com/charlesterrenal/noir-x-velo-hackathon/blob/ad0ed211cdd7/apps/server/src/velo.ts#L59). Payloads with a bad signature are still rejected.
 
 ## Testnet proof
 
@@ -105,7 +105,7 @@ All transactions, including the strict-freshness order, Velo project setup and N
 apps/web/         Seller page: order form, live job progress, receipt (Vite)
 apps/server/      Express API, Velo webhook, SQLite, agent worker
 packages/agent/   Offer selection, research snapshots, Noir client
-packages/shared/  API types shared by web and server
+packages/shared/  API types and freshness limits shared by web and server
 scripts/          Noir provisioning, Noir smoke test, price re-check, doc link check
 docs/             Evidence, operations runbook, write-up, screenshots
 ```
@@ -137,7 +137,13 @@ Checkout works locally, but Velo can only deliver webhooks to a public HTTPS URL
 
 ## Screenshots
 
-_Added after the redesign ships._
+Start: the agent's pick is previewed live as the seller changes the freshness setting.
+
+![Start page with the agent's pick highlighted](docs/screenshots/start.png)
+
+Completed order: the decision, the suggested price with every source, and the receipt with three Stellar Expert links.
+
+![Completed order with suggested price, sources and receipt](docs/screenshots/completed.png)
 
 ## What's next
 
