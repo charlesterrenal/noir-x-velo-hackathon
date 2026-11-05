@@ -18,6 +18,6 @@ The agent, not a person, decides whom to pay and how much, and it signs the paym
 
 Every step is on Stellar Testnet and linked from the order's receipt.
 
-Live site: https://goats-production-231d.up.railway.app
+Live site: https://listoapp.up.railway.app
 Repository: https://github.com/charlesterrenal/noir-x-velo-hackathon
 Example agent payment: https://stellar.expert/explorer/testnet/tx/1f5f9bb469098dbaa88f69a96a9c80fb30e9217bf06d262c2b7e7e220e4e4296
