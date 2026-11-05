@@ -28,6 +28,7 @@ function fakeNoir(opts: { refuseAll?: boolean; authError?: Error } = {}) {
         return { hash: 'authhash', nonce: p.nonce ?? 0n };
       },
       getPendingBalance: async () => pending,
+      prepare: async (): Promise<string> => 'xdr',
       claim: async () => {
         pending = 0n;
         return { hash: 'claimhash' };
@@ -104,6 +105,32 @@ test('unknown authorization outcome goes to review and pauses further purchases'
   const next = queueJob('flexible');
   assert.equal(await runOnce(deps(fakeNoir().noir)), null);
   assert.equal(job(next).status, 'queued');
+});
+
+test('review job whose authorization never landed is requeued after it expires, then completes', async () => {
+  // The previous test left a job in review with a purchase in 'unknown'.
+  const stuck = db.prepare("SELECT job_id FROM purchases WHERE status = 'unknown'").get() as { job_id: string };
+  db.prepare("UPDATE purchases SET updated_at = datetime('now', '-10 minutes') WHERE job_id = ?").run(stuck.job_id);
+  const fake = fakeNoir();
+  const prepare = async () => 'xdr';
+  // The paused queued job runs first, then the requeued one.
+  await runOnce(deps({ ...fake.noir, prepare }));
+  await runOnce(deps({ ...fake.noir, prepare }));
+  assert.equal(job(stuck.job_id).status, 'completed');
+});
+
+test('review job whose authorization did land stays for the operator', async () => {
+  const id = queueJob('flexible');
+  await runOnce(deps({ ...fakeNoir({ authError: new Error('timeout') }).noir, prepare: async () => 'xdr' }));
+  assert.equal(job(id).status, 'review');
+  db.prepare("UPDATE purchases SET updated_at = datetime('now', '-10 minutes') WHERE job_id = ?").run(id);
+  const prepare = async () => {
+    throw new NoirContractError('paymentEscrow', 6, 'DuplicateAuth', 'authorize');
+  };
+  await runOnce(deps({ ...fakeNoir().noir, prepare }));
+  assert.equal(job(id).status, 'review');
+  assert.equal(purchase(id)!.status, 'needs_operator');
+  db.prepare("UPDATE jobs SET status = 'blocked' WHERE id = ?").run(id); // unpause for later tests
 });
 
 test('restart: mid-comparison job requeues, mid-payment job goes to review', () => {

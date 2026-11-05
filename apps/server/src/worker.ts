@@ -14,7 +14,7 @@ import { db, tx } from './db.ts';
 import { PRODUCTS } from './jobs.ts';
 
 export type WorkerDeps = {
-  noir: Pick<NoirAgentClient, 'checkPayment' | 'authorizePayment' | 'claim' | 'getPendingBalance'>;
+  noir: Pick<NoirAgentClient, 'checkPayment' | 'authorizePayment' | 'claim' | 'getPendingBalance' | 'prepare'>;
   agent: NoirSigner;
   merchants: Record<MerchantKey, NoirSigner>;
   now?: () => Date;
@@ -56,8 +56,51 @@ export function recoverAfterRestart() {
   ).run();
 }
 
+// Noir SDK transactions expire 300 s after they are built, so after this an interrupted authorization can no longer land.
+const SETTLED = '-6 minutes';
+
+/**
+ * Resolves review jobs whose authorization outcome was unknown. Replaying the saved authorization as a simulation
+ * with the same nonce is definitive once the original transaction has expired: the contract rejects a used nonce
+ * with DuplicateAuth. Unused nonce: nothing was paid, so the job is requeued. Anything else stays for an operator.
+ */
+export async function reconcileUnknownPayments(deps: WorkerDeps) {
+  const rows = db
+    .prepare(
+      `SELECT p.* FROM purchases p JOIN jobs j ON j.id = p.job_id
+       WHERE j.status = 'review' AND p.auth_hash IS NULL AND p.status IN ('authorizing', 'unknown')
+       AND p.updated_at < datetime('now', ?)`,
+    )
+    .all(SETTLED) as Record<string, string>[];
+  for (const p of rows) {
+    try {
+      await deps.noir.prepare(deps.agent.publicKey, {
+        kind: 'authorize',
+        deviceHash: p.device_hash,
+        merchant: p.merchant,
+        asset: p.asset,
+        amount: toStroops(p.amount),
+        nonce: BigInt(p.nonce),
+      });
+    } catch (err) {
+      const landed = err instanceof NoirContractError && err.errorName === 'DuplicateAuth';
+      setPurchase(p.job_id, {
+        status: 'needs_operator',
+        error: landed ? 'authorization reached the chain but its hash was not recorded' : `reconcile failed: ${describeError(err)}`,
+      });
+      continue;
+    }
+    tx(() => {
+      db.prepare('DELETE FROM purchases WHERE job_id = ?').run(p.job_id);
+      db.prepare("UPDATE jobs SET status = 'queued', error = NULL, updated_at = datetime('now') WHERE id = ?").run(p.job_id);
+    });
+    console.log('worker reconciled', p.job_id, 'authorization never landed; requeued');
+  }
+}
+
 /** Takes and fully processes at most one queued job. Returns the job ID it handled, if any. */
 export async function runOnce(deps: WorkerDeps): Promise<string | null> {
+  await reconcileUnknownPayments(deps);
   // Any job awaiting reconciliation pauses new purchases.
   if (db.prepare("SELECT 1 FROM jobs WHERE status = 'review' LIMIT 1").get()) return null;
 
