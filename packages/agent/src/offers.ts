@@ -13,28 +13,46 @@ export type Offer = {
   snapshot: { id: string; takenAt: string; currency: string; comparables: Comparable[] };
 };
 
-// shortcut: placeholder offers with no comparables; lane C replaces them with dated, source-backed snapshots.
+// Curated research snapshots: real PH listings for a pre-owned iPhone 13 mini 256GB, each fetched and checked
+// on the date shown. Not live search. 'recent' is a later re-check of the same pages, so the two differ in age.
+const ALLO = 'https://www.alloallo.com/ph/refurbished-iphone-1/iphone-13-mini-10';
 export const OFFERS: Offer[] = [
   {
     id: 'basic',
-    productId: 'demo',
+    productId: 'iphone-13-mini-256',
     label: 'Basic research',
     merchant: 'basic',
     amount: '1',
-    snapshot: { id: 'basic-2026-10-25', takenAt: '2026-10-25T00:00:00+08:00', currency: 'PHP', comparables: [] },
+    snapshot: {
+      id: 'basic-2026-11-06',
+      takenAt: '2026-11-06T00:00:00+08:00', // observed during 2026-11-06 Manila; start of day keeps the age conservative
+      currency: 'PHP',
+      comparables: [
+        { url: `${ALLO}/iphone-13-mini-256-gb-random-1499/`, observedAt: '2026-11-06', price: '18625.90', condition: 'Allo Allo, refurbished, good' },
+        { url: 'https://compasia.com.ph/products/iphone-13-mini', observedAt: '2026-11-06', price: '18690', condition: 'CompAsia, pre-owned, fair (sold out)' },
+        { url: `${ALLO}/iphone-13-mini-256-gb-random-1499/`, observedAt: '2026-11-06', price: '19341.90', condition: 'Allo Allo, refurbished, very good' },
+        { url: `${ALLO}/iphone-13-mini-256-gb-midnight-130/`, observedAt: '2026-11-06', price: '20058.90', condition: 'Allo Allo, refurbished, good' },
+        { url: `${ALLO}/iphone-13-mini-256-gb-random-1499/`, observedAt: '2026-11-06', price: '21491.90', condition: 'Allo Allo, refurbished, like new' },
+        { url: `${ALLO}/iphone-13-mini-256-gb-midnight-new-battery-2013/`, observedAt: '2026-11-06', price: '22208.90', condition: 'Allo Allo, refurbished, good, new battery' },
+      ],
+    },
   },
   {
     id: 'recent',
-    productId: 'demo',
+    productId: 'iphone-13-mini-256',
     label: 'Recent research',
     merchant: 'recent',
     amount: '2',
-    snapshot: { id: 'recent-2026-11-05', takenAt: '2026-11-05T12:00:00+08:00', currency: 'PHP', comparables: [] },
+    // shortcut: empty until the pages are re-checked; fill before recording and again on pitch day.
+    snapshot: { id: 'recent-pending', takenAt: '2026-11-06T00:00:00+08:00', currency: 'PHP', comparables: [] },
   },
 ];
 
-// Oldest snapshot each freshness setting accepts.
-export const MAX_AGE_HOURS: Record<Freshness, number> = { flexible: 30 * 24, strict: 7 * 24 };
+// Oldest snapshot each freshness setting accepts. Hours-based because both snapshots are collected days apart at most.
+export const MAX_AGE_HOURS: Record<Freshness, number> = { flexible: 30 * 24, strict: 12 };
+
+export const formatAge = (hours: number) =>
+  hours < 48 ? `${hours} hour${hours === 1 ? '' : 's'}` : `${Math.round(hours / 24)} days`;
 
 export const ageHours = (offer: Offer, now: Date) =>
   Math.round((now.getTime() - new Date(offer.snapshot.takenAt).getTime()) / 36e5);
@@ -73,16 +91,17 @@ export async function selectOffer(
     const entry: DecisionEntry = { offerId: offer.id, amount: offer.amount, snapshotAgeHours: ageHours(offer, now) };
     trace.push(entry);
     if (offer.productId !== job.productId) entry.filteredOut = 'different product';
-    else if (entry.snapshotAgeHours > maxAge) entry.filteredOut = `snapshot older than ${maxAge / 24} days`;
+    else if (!offer.snapshot.comparables.length) entry.filteredOut = 'no data collected yet';
+    else if (entry.snapshotAgeHours > maxAge) entry.filteredOut = `data older than ${formatAge(maxAge)}`;
     if (entry.filteredOut) continue;
     const check = await checkPayment(offer);
     entry.checkPayment = check.ok ? { ok: true } : { ok: false, reason: check.reason };
     if (check.ok && !chosen) chosen = offer;
   }
 
-  const limit = `${job.freshness} freshness (max ${maxAge / 24} days)`;
+  const limit = `${job.freshness} freshness (max ${formatAge(maxAge)})`;
   const reason = chosen
-    ? `Cheapest offer that meets ${limit} and passes the Noir policy check: ${chosen.label} at ${chosen.amount} XLM, data ${Math.round(ageHours(chosen, now) / 24)} days old.`
+    ? `Cheapest offer that meets ${limit} and passes the Noir policy check: ${chosen.label} at ${chosen.amount} XLM, data ${formatAge(ageHours(chosen, now))} old.`
     : `No offer meets ${limit} and passes the Noir policy check.`;
   return { offer: chosen, reason, trace };
 }

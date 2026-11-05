@@ -4,10 +4,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { NoirContractError, type NoirSigner } from '@noirx402/agent-sdk';
+import { OFFERS, buildListing, type Offer } from '@goats/agent';
 
 process.env.DATA_DIR = mkdtempSync(join(tmpdir(), 'goats-worker-'));
 const { db } = await import('./db.ts');
 const { runOnce, recoverAfterRestart } = await import('./worker.ts');
+
+// Fixture offers: basic data is 3 days old, recent data 2 hours old (relative to the fixed 'now' below).
+const comparable = { url: 'https://example.test/listing', observedAt: '2026-11-06', price: '20000', condition: 'used' };
+const TEST_OFFERS: Offer[] = [
+  { id: 'basic', productId: 'iphone-13-mini-256', label: 'Basic research', merchant: 'basic', amount: '1',
+    snapshot: { id: 'b', takenAt: '2026-11-03T12:00:00+08:00', currency: 'PHP', comparables: [comparable] } },
+  { id: 'recent', productId: 'iphone-13-mini-256', label: 'Recent research', merchant: 'recent', amount: '2',
+    snapshot: { id: 'r', takenAt: '2026-11-06T10:00:00+08:00', currency: 'PHP', comparables: [comparable] } },
+];
 
 const signer = (publicKey: string): NoirSigner => ({ publicKey, signTransaction: async (x) => x });
 const CAP = 25_000_000n; // 2.5 XLM
@@ -42,6 +52,7 @@ const deps = (noir: ReturnType<typeof fakeNoir>['noir']) => ({
   agent: signer('GAGENT'),
   merchants: { basic: signer('GBASIC'), recent: signer('GRECENT') },
   now: () => new Date('2026-11-06T12:00:00+08:00'),
+  offers: TEST_OFFERS,
 });
 
 let n = 0;
@@ -49,7 +60,7 @@ function queueJob(freshness: 'flexible' | 'strict') {
   const id = `job${++n}`;
   db.prepare(
     `INSERT INTO jobs (id, request_id, product_id, freshness, checkout_amount, checkout_asset, device_hash, status)
-     VALUES (?, ?, 'demo', ?, '1', 'native', ?, 'queued')`,
+     VALUES (?, ?, 'iphone-13-mini-256', ?, '1', 'native', ?, 'queued')`,
   ).run(id, `req-${id}`, freshness, `dev${n}`.padEnd(64, '0'));
   db.prepare("INSERT INTO slots (device_hash, job_id, status) VALUES (?, ?, 'reserved')").run(`dev${n}`.padEnd(64, '0'), id);
   return id;
@@ -77,7 +88,7 @@ test('strict freshness filters the old snapshot and buys the recent offer', asyn
   await runOnce(deps(fakeNoir().noir));
   assert.equal(purchase(id)!.offer_id, 'recent');
   const trace = JSON.parse(job(id).result_json).decisionTrace;
-  assert.match(trace.find((t: { offerId: string }) => t.offerId === 'basic').filteredOut, /older than 7 days/);
+  assert.match(trace.find((t: { offerId: string }) => t.offerId === 'basic').filteredOut, /older than 12 hours/);
 });
 
 test('policy refusal on every offer blocks without paying', async () => {
@@ -141,4 +152,10 @@ test('restart: mid-comparison job requeues, mid-payment job goes to review', () 
   recoverAfterRestart();
   assert.equal(job(a).status, 'queued');
   assert.equal(job(b).status, 'review');
+});
+
+test('real basic snapshot prices the listing at the median of its comparables', () => {
+  const listing = buildListing(OFFERS.find((o) => o.id === 'basic')!, 'iPhone 13 mini 256GB');
+  assert.equal(listing.suggestedPrice, '19700.40');
+  assert.equal(listing.sources.length, 6);
 });

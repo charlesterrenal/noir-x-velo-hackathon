@@ -2,14 +2,15 @@ import type { CreateJobResponse, DecisionEntry, JobStatus, JobView, OfferSummary
 
 const work = document.querySelector<HTMLElement>('#work')!;
 const receipt = document.querySelector<HTMLElement>('#receipt')!;
-const PRODUCT = { id: 'demo', name: 'Demo product' }; // shortcut: placeholder until lane C picks the product
+const PRODUCT = { id: 'iphone-13-mini-256', name: 'iPhone 13 mini 256GB' };
 const FEE = '1';
 const EXPLORER = 'https://stellar.expert/explorer/testnet/tx/';
 
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-const days = (iso: string) => plural(Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 864e5)), 'day');
+const age = (hours: number) => (hours < 48 ? plural(hours, 'hour') : plural(Math.round(hours / 24), 'day'));
+const days = (iso: string) => age(Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 36e5)));
 const txLink = (hash: string | null) =>
   hash ? `<a href="${EXPLORER}${esc(hash)}" target="_blank" rel="noopener">${esc(hash.slice(0, 10))}… on Stellar Expert</a>` : '';
 
@@ -43,7 +44,7 @@ function renderStart() {
         </label>
         <label class="choice">
           <input type="radio" name="freshness" value="strict" />
-          <strong>Up to 7 days old</strong>
+          <strong>Up to 12 hours old</strong>
           <span>The agent must buy recent data.${recent ? ` Option: ${esc(recent.label)}, ${esc(recent.amount)} XLM, ${days(recent.snapshotTakenAt)} old.` : ''}</span>
         </label>
       </fieldset>
@@ -123,7 +124,7 @@ function traceRow(t: DecisionEntry, chosen: string | null) {
       : t.offerId === chosen ? 'Chosen' : 'Allowed, not cheapest';
   const o = offerById(t.offerId);
   return `<tr class="${t.offerId === chosen ? 'chosen' : ''}">
-    <td>${esc(o?.label ?? t.offerId)}</td><td>${esc(t.amount)} XLM</td><td>${plural(Math.round(t.snapshotAgeHours / 24), 'day')}</td><td>${esc(result)}</td></tr>`;
+    <td>${esc(o?.label ?? t.offerId)}</td><td>${esc(t.amount)} XLM</td><td>${age(t.snapshotAgeHours)}</td><td>${esc(result)}</td></tr>`;
 }
 
 function renderJob(job: JobView) {

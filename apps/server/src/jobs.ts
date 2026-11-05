@@ -3,9 +3,9 @@ import type { CreateJobRequest, Freshness, JobStatus, JobView } from '@goats/sha
 import { db, tx } from './db.ts';
 import { velo } from './velo.ts';
 
-// shortcut: one placeholder product until lane C picks the real one and its offers.
+// The one product the demo prices.
 export const PRODUCTS: Record<string, { name: string; checkoutFee: string }> = {
-  demo: { name: 'Demo product', checkoutFee: '1' },
+  'iphone-13-mini-256': { name: 'iPhone 13 mini 256GB', checkoutFee: '1' },
 };
 const FRESHNESS: Freshness[] = ['flexible', 'strict'];
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;

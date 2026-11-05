@@ -8,6 +8,7 @@ import {
   requireSecret,
   selectOffer,
   type MerchantKey,
+  type Offer,
 } from '@goats/agent';
 import type { Freshness } from '@goats/shared';
 import { db, tx } from './db.ts';
@@ -18,6 +19,7 @@ export type WorkerDeps = {
   agent: NoirSigner;
   merchants: Record<MerchantKey, NoirSigner>;
   now?: () => Date;
+  offers?: Offer[];
 };
 
 type JobRow = { id: string; product_id: string; freshness: Freshness; device_hash: string; result_json: string | null };
@@ -119,7 +121,7 @@ export async function runOnce(deps: WorkerDeps): Promise<string | null> {
   // 1. Decide whom to pay and how much. Nothing on chain yet, so any failure here is a clean block.
   let selection;
   try {
-    selection = await selectOffer(OFFERS, { productId: job.product_id, freshness: job.freshness }, now, (offer) =>
+    selection = await selectOffer(deps.offers ?? OFFERS, { productId: job.product_id, freshness: job.freshness }, now, (offer) =>
       deps.noir.checkPayment({
         deviceHash: job.device_hash,
         agent: agentAddress,

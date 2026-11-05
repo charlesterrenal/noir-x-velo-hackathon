@@ -42,7 +42,7 @@ function paymentEvent(id: string, intentId: string, amount = '1.0000000', asset 
 function addJob(id: string, intentId: string) {
   db.prepare(
     `INSERT INTO jobs (id, request_id, product_id, freshness, checkout_amount, checkout_asset, payment_intent_id)
-     VALUES (?, ?, 'demo', 'flexible', '1', 'native', ?)`,
+     VALUES (?, ?, 'iphone-13-mini-256', 'flexible', '1', 'native', ?)`,
   ).run(id, `req-${id}`, intentId);
 }
 const status = (id: string) => (db.prepare('SELECT status FROM jobs WHERE id = ?').get(id) as { status: string }).status;
