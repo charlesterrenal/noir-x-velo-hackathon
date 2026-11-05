@@ -15,7 +15,9 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test \"apps/**/*.test.ts\"",
     "build": "npm run build -w apps/web",
-    "start": "node apps/server/src/index.ts"
+    "start": "node apps/server/src/index.ts",
+    "noir:setup": "node --env-file-if-exists=.env scripts/noir-setup.ts",
+    "noir:smoke": "node --env-file-if-exists=.env scripts/noir-smoke.ts"
   },
   "devDependencies": {
     "@types/express": "5.0.6",
