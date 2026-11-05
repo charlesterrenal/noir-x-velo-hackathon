@@ -77,6 +77,14 @@ test('sample event with no saved job is recorded but queues nothing', async () =
   assert.ok(db.prepare('SELECT 1 FROM webhook_deliveries WHERE delivery_id = ?').get('d4'));
 });
 
+test('signed payload with non-string project fields still queues; unsigned one does not', async () => {
+  addJob('j3', 'pi_3');
+  const body = paymentEvent('evt_6', 'pi_3').replace('"registryProjectId":"r"', '"registryProjectId":null');
+  assert.equal((await handleVeloWebhook(body, sign(body, 'wrong'), 'd6', SECRET)).status, 400);
+  assert.equal(status('j3'), 'awaiting_payment');
+  assert.equal((await handleVeloWebhook(body, sign(body), 'd7', SECRET)).body, 'queued');
+});
+
 test('wrong amount does not queue', async () => {
   addJob('j2', 'pi_2');
   const body = paymentEvent('evt_5', 'pi_2', '0.5');

@@ -17,6 +17,31 @@ export function sameAmount(a: string, b: string): boolean {
 const assetKey = (asset: string) => (['native', 'xlm'].includes(asset.toLowerCase()) ? 'native' : asset);
 
 type JobRow = { id: string; status: string; checkout_amount: string; checkout_asset: string };
+type PaymentIntentData = { id: string; amount: string; asset: string; txHash?: string };
+type VerifiedEvent = { id: string; type: string; test: boolean; paymentIntent?: PaymentIntentData };
+
+const SHAPE_ERROR = 'Invalid webhook event:';
+const str = (v: unknown): v is string => typeof v === 'string';
+
+// Reads only the fields this app uses from a payload whose HMAC already matched.
+function parseVerifiedPayload(payload: string): VerifiedEvent | null {
+  const e = JSON.parse(payload);
+  if (!str(e?.id) || !str(e.type) || typeof e.test !== 'boolean') return null;
+  const pi = e.paymentIntent;
+  if (e.type.startsWith('payment.')) {
+    if (!str(pi?.id) || !str(pi.amount) || !str(pi.asset) || (pi.txHash != null && !str(pi.txHash))) return null;
+  }
+  console.warn('velo webhook shape', JSON.stringify({
+    eventId: e.id,
+    projectFieldTypes: Object.fromEntries(Object.entries(e.project ?? {}).map(([k, v]) => [k, v === null ? 'null' : typeof v])),
+  }));
+  return {
+    id: e.id,
+    type: e.type,
+    test: e.test,
+    paymentIntent: pi ? { id: pi.id, amount: pi.amount, asset: pi.asset, txHash: pi.txHash ?? undefined } : undefined,
+  };
+}
 
 export async function handleVeloWebhook(
   payload: string,
@@ -24,18 +49,21 @@ export async function handleVeloWebhook(
   deliveryId: string | null,
   secret: string,
 ): Promise<{ status: number; body: string }> {
-  let event;
+  let event: VerifiedEvent | null;
   try {
     event = await Velo.webhooks.verify({ payload, signature, secret });
   } catch (err) {
-    if (err instanceof VeloWebhookSignatureVerificationError) {
+    if (!(err instanceof VeloWebhookSignatureVerificationError)) throw err;
+    // In the pinned SDK (0.1.0-alpha.4) the shape check runs only after the HMAC matched, so this payload is authentic.
+    // shortcut: Velo's live payload has project fields the SDK rejects; remove this fallback once Velo fixes it.
+    event = err.message.startsWith(SHAPE_ERROR) ? parseVerifiedPayload(payload) : null;
+    if (!event) {
       console.warn('velo webhook rejected', JSON.stringify({ delivery: deliveryId, reason: err.message }));
       return { status: 400, body: 'invalid signature' };
     }
-    throw err;
   }
 
-  const intent = 'paymentIntent' in event ? event.paymentIntent : undefined;
+  const intent = event.paymentIntent;
   const key = deliveryId ?? `event:${event.id}`;
 
   const outcome = tx(() => {
