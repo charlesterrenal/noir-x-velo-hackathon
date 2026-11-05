@@ -5,7 +5,7 @@ import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
 import { Keypair } from '@stellar/stellar-sdk';
 import { keypairSigner, normalizeDeviceHash, toStroops, fromStroops } from '@noirx402/agent-sdk';
-import { XLM, describeError, explorerTx, noirClient } from './noir-common.ts';
+import { XLM, describeError, explorerTx, noirClient } from '@goats/agent';
 
 const ENV_FILE = '.env';
 const ESCROW = toStroops('5');

@@ -8,7 +8,9 @@
   },
   "dependencies": {
     "@carts1024/velo-sdk": "0.1.0-alpha.4",
+    "@goats/agent": "0.0.0",
     "@goats/shared": "0.0.0",
+    "@noirx402/agent-sdk": "0.3.0",
     "express": "5.3.0"
   }
 }

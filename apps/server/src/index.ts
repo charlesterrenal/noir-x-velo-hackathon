@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { db } from './db.ts';
 import { createJob, getJobView } from './jobs.ts';
 import { handleVeloWebhook } from './velo.ts';
+import { startWorker } from './worker.ts';
+import { offerSummaries } from '@goats/agent';
 
 const app = express();
 
@@ -30,6 +32,10 @@ app.post('/api/jobs', async (req, res) => {
   res.status(result.status).json(result.body);
 });
 
+app.get('/api/offers', (_req, res) => {
+  res.json(offerSummaries());
+});
+
 app.get('/api/jobs/:id', (req, res) => {
   const view = getJobView(req.params.id);
   if (view) res.json(view);
@@ -51,3 +57,4 @@ app.use(express.static(webDist));
 
 const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => console.log(`server listening on :${port}`));
+startWorker();

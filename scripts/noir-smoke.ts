@@ -1,7 +1,7 @@
 // Local only. One real agent payment and merchant claim on a smoke-test device.
 // Usage: npm run noir:smoke -- <device-hash> [amount-xlm=1]
 import { keypairSigner, normalizeDeviceHash, toStroops, fromStroops } from '@noirx402/agent-sdk';
-import { XLM, describeError, explorerTx, noirClient, requireSecret } from './noir-common.ts';
+import { XLM, describeError, explorerTx, noirClient, requireSecret } from '@goats/agent';
 
 async function main() {
   if (!process.argv[2]) throw new Error('usage: npm run noir:smoke -- <device-hash> [amount-xlm]');

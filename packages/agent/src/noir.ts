@@ -23,11 +23,11 @@ export const explorerTx = (hash: string) => `https://stellar.expert/explorer/tes
 
 export function requireSecret(name: string): Keypair {
   const secret = process.env[name];
-  if (!secret) throw new Error(`${name} is not set. Run npm run noir:setup first.`);
+  if (!secret) throw new Error(`${name} is not set`);
   return Keypair.fromSecret(secret);
 }
 
 export function describeError(err: unknown): string {
-  if (err instanceof NoirContractError) return `NoirContractError ${err.name}: ${err.message}`;
+  if (err instanceof NoirContractError) return `${err.errorName} (${err.contract}.${err.method})`;
   return err instanceof Error ? err.message : String(err);
 }
