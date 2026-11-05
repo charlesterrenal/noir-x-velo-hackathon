@@ -49,8 +49,8 @@ function queueJob(freshness: 'flexible' | 'strict') {
   db.prepare(
     `INSERT INTO jobs (id, request_id, product_id, freshness, checkout_amount, checkout_asset, device_hash, status)
      VALUES (?, ?, 'demo', ?, '1', 'native', ?, 'queued')`,
-  ).run(id, `req-${id}`, freshness, `dev${n}`);
-  db.prepare("INSERT INTO slots (device_hash, job_id, status) VALUES (?, ?, 'reserved')").run(`dev${n}`, id);
+  ).run(id, `req-${id}`, freshness, `dev${n}`.padEnd(64, '0'));
+  db.prepare("INSERT INTO slots (device_hash, job_id, status) VALUES (?, ?, 'reserved')").run(`dev${n}`.padEnd(64, '0'), id);
   return id;
 }
 const job = (id: string) => db.prepare('SELECT status, error, result_json FROM jobs WHERE id = ?').get(id) as Record<string, string>;
@@ -86,6 +86,8 @@ test('policy refusal on every offer blocks without paying', async () => {
   assert.equal(job(id).status, 'blocked');
   assert.equal(purchase(id), undefined);
   assert.equal(fake.auths.length, 0);
+  // Nothing was spent, so the slot goes back to the pool.
+  assert.equal(db.prepare('SELECT 1 FROM slots WHERE job_id = ?').get(id), undefined);
 });
 
 test('contract refusal during authorization blocks the job', async () => {

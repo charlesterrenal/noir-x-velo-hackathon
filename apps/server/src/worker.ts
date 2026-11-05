@@ -30,6 +30,13 @@ const setPurchase = (jobId: string, fields: Record<string, string>) => {
   const cols = Object.keys(fields).map((k) => `${k} = ?`).join(', ');
   db.prepare(`UPDATE purchases SET ${cols}, updated_at = datetime('now') WHERE job_id = ?`).run(...Object.values(fields), jobId);
 };
+// Only for refusals where no money left the device: the slot's allowance is intact, so another order can use it.
+const blockAndReleaseSlot = (id: string, error: string) => {
+  setJob(id, 'blocked', error);
+  db.prepare(`UPDATE slots SET status = 'available', job_id = NULL WHERE job_id = ? AND ${REAL_DEVICE}`).run(id);
+};
+// Placeholder smoke-test slots (not 64-char hashes) are never handed out again.
+const REAL_DEVICE = 'length(device_hash) = 64';
 
 /**
  * Runs after a restart: a job left mid-comparison has written nothing on chain and can start over;
@@ -39,6 +46,13 @@ export function recoverAfterRestart() {
   db.prepare("UPDATE jobs SET status = 'queued' WHERE status = 'comparing'").run();
   db.prepare(
     "UPDATE jobs SET status = 'review', error = 'interrupted during payment; reconcile on Stellar Expert' WHERE status IN ('purchasing', 'claiming')",
+  ).run();
+  // Blocked jobs that never authorized a payment leave the device allowance untouched.
+  db.prepare(
+    `UPDATE slots SET status = 'available', job_id = NULL
+     WHERE ${REAL_DEVICE} AND job_id IN (
+       SELECT j.id FROM jobs j WHERE j.status = 'blocked'
+       AND NOT EXISTS (SELECT 1 FROM purchases p WHERE p.job_id = j.id AND p.auth_hash IS NOT NULL))`,
   ).run();
 }
 
@@ -72,14 +86,14 @@ export async function runOnce(deps: WorkerDeps): Promise<string | null> {
       }),
     );
   } catch (err) {
-    setJob(job.id, 'blocked', `offer comparison failed: ${describeError(err)}`);
+    tx(() => blockAndReleaseSlot(job.id, `offer comparison failed: ${describeError(err)}`));
     return job.id;
   }
   const decision = { selectionReason: selection.reason, decisionTrace: selection.trace };
   setResult(job.id, decision);
   const offer = selection.offer;
   if (!offer) {
-    setJob(job.id, 'blocked', selection.reason);
+    tx(() => blockAndReleaseSlot(job.id, selection.reason));
     return job.id;
   }
 
@@ -114,7 +128,7 @@ export async function runOnce(deps: WorkerDeps): Promise<string | null> {
     if (err instanceof NoirContractError) {
       tx(() => {
         setPurchase(job.id, { status: 'refused', error: err.errorName });
-        setJob(job.id, 'blocked', `Noir refused the payment: ${err.errorName}`);
+        blockAndReleaseSlot(job.id, `Noir refused the payment: ${err.errorName}`);
       });
     } else {
       tx(() => {
