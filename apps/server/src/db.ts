@@ -63,3 +63,20 @@ db.exec(`
     status      TEXT NOT NULL DEFAULT 'available' -- available | reserved | spent
   );
 `);
+
+// Funded Noir devices, one per demo slot (comma-separated in DEVICE_HASHES).
+for (const hash of (process.env.DEVICE_HASHES ?? '').split(',').map((s) => s.trim()).filter(Boolean)) {
+  db.prepare('INSERT OR IGNORE INTO slots (device_hash) VALUES (?)').run(hash);
+}
+
+export function tx<T>(fn: () => T): T {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+}

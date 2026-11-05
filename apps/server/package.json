@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@carts1024/velo-sdk": "0.1.0-alpha.4",
+    "@goats/shared": "0.0.0",
     "express": "5.3.0"
   }
 }
