@@ -17,7 +17,8 @@
     "build": "npm run build -w apps/web",
     "start": "node apps/server/src/index.ts",
     "noir:setup": "node --env-file-if-exists=.env scripts/noir-setup.ts",
-    "noir:smoke": "node --env-file-if-exists=.env scripts/noir-smoke.ts"
+    "noir:smoke": "node --env-file-if-exists=.env scripts/noir-smoke.ts",
+    "recheck-prices": "node scripts/recheck-prices.ts"
   },
   "devDependencies": {
     "@types/express": "5.0.6",

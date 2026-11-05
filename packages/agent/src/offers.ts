@@ -1,4 +1,5 @@
 import type { DecisionEntry, Freshness, Listing, OfferSummary } from '@goats/shared';
+import recent from './recent-snapshot.json' with { type: 'json' };
 
 export type MerchantKey = 'basic' | 'recent';
 
@@ -43,8 +44,8 @@ export const OFFERS: Offer[] = [
     label: 'Recent research',
     merchant: 'recent',
     amount: '2',
-    // shortcut: empty until the pages are re-checked; fill before recording and again on pitch day.
-    snapshot: { id: 'recent-pending', takenAt: '2026-11-06T00:00:00+08:00', currency: 'PHP', comparables: [] },
+    // Written by npm run recheck-prices; re-run before recording and on pitch day so it stays within the strict limit.
+    snapshot: { id: `recent-${recent.takenAt}`, takenAt: recent.takenAt, currency: 'PHP', comparables: recent.comparables },
   },
 ];
 
@@ -84,20 +85,23 @@ export async function selectOffer(
 ): Promise<Selection> {
   const maxAge = MAX_AGE_HOURS[job.freshness];
   const sorted = [...offers].sort((a, b) => Number(a.amount) - Number(b.amount) || a.id.localeCompare(b.id));
-  const trace: DecisionEntry[] = [];
-  let chosen: Offer | null = null;
-
-  for (const offer of sorted) {
+  const trace: DecisionEntry[] = sorted.map((offer) => {
     const entry: DecisionEntry = { offerId: offer.id, amount: offer.amount, snapshotAgeHours: ageHours(offer, now) };
-    trace.push(entry);
     if (offer.productId !== job.productId) entry.filteredOut = 'different product';
     else if (!offer.snapshot.comparables.length) entry.filteredOut = 'no data collected yet';
     else if (entry.snapshotAgeHours > maxAge) entry.filteredOut = `data older than ${formatAge(maxAge)}`;
-    if (entry.filteredOut) continue;
-    const check = await checkPayment(offer);
-    entry.checkPayment = check.ok ? { ok: true } : { ok: false, reason: check.reason };
-    if (check.ok && !chosen) chosen = offer;
-  }
+    return entry;
+  });
+
+  // Ask Noir about every remaining offer at once; the trace keeps price order.
+  await Promise.all(
+    sorted.map(async (offer, i) => {
+      if (trace[i].filteredOut) return;
+      const check = await checkPayment(offer);
+      trace[i].checkPayment = check.ok ? { ok: true } : { ok: false, reason: check.reason };
+    }),
+  );
+  const chosen = sorted.find((_, i) => trace[i].checkPayment?.ok) ?? null;
 
   const limit = `${job.freshness} freshness (max ${formatAge(maxAge)})`;
   const reason = chosen
