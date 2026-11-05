@@ -1,5 +1,6 @@
-// Local only. Provisions one Noir demo device: accounts, device, agent policy, escrow.
-// Usage: npm run noir:setup [-- <card-uid-hex>]   (no UID: a random 7-byte UID is generated)
+// Local only. Provisions Noir demo devices: accounts, device, agent policy, escrow.
+// Usage: npm run noir:setup [-- --count <n> | <card-uid-hex> ...]   (default: one device with a random 7-byte UID)
+// Run one setup at a time: parallel runs sign with the same owner account and their transactions collide.
 // Safe to re-run: every step reads chain state first and only does what is missing.
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
@@ -40,16 +41,12 @@ async function account(name: string): Promise<Keypair> {
   return kp;
 }
 
-async function main() {
-  const noir = noirClient();
-  const [owner, agent, merchantBasic, merchantRecent] = await Promise.all(KEYS.map(account));
-
-  const uid = (process.argv[2] ?? randomBytes(7).toString('hex')).toLowerCase();
+async function provision(noir: ReturnType<typeof noirClient>, owner: Keypair, agent: Keypair, uid: string): Promise<string> {
   if (!/^[0-9a-f]+$/.test(uid)) throw new Error(`card UID must be hex, got ${uid}`);
   // Same as Noir's app and extension: SHA-256 over the UTF-8 bytes of the hex UID string.
   const deviceHash = normalizeDeviceHash(createHash('sha256').update(uid, 'utf8').digest('hex'));
   const ownerSigner = keypairSigner(owner.secret());
-  console.log(`device uid=${uid} hash=${deviceHash}`);
+  console.log(`\ndevice uid=${uid} hash=${deviceHash}`);
 
   const deviceOwner = await noir.getDeviceOwner(deviceHash);
   if (deviceOwner === null) {
@@ -89,13 +86,23 @@ async function main() {
   } else console.log(`fundEscrow      already ${fromStroops(balance)} XLM`);
 
   appendEnv(`# noir device uid=${uid} hash=${deviceHash} (${new Date().toISOString()})`);
+  console.log(`done: escrow ${fromStroops(await noir.getEscrowBalance(deviceHash))} XLM, cap 2.5 XLM, expires ${EXPIRES_AT.toISOString()}`);
+  return deviceHash;
+}
+
+async function main() {
+  const noir = noirClient();
+  const [owner, agent] = await Promise.all(KEYS.map(account));
+  const args = process.argv.slice(2);
+  const count = args[0] === '--count' ? Number(args[1]) : 0;
+  if (args[0] === '--count' && !(count >= 1 && count <= 20)) throw new Error('--count must be 1 to 20');
+  const uids = count ? Array.from({ length: count }, () => randomBytes(7).toString('hex')) : args.length ? args.map((a) => a.toLowerCase()) : [randomBytes(7).toString('hex')];
+
+  const hashes: string[] = [];
+  for (const uid of uids) hashes.push(await provision(noir, owner, agent, uid)); // sequential on purpose
   console.log(`
-done. escrow ${fromStroops(await noir.getEscrowBalance(deviceHash))} XLM, cap 2.5 XLM, expires ${EXPIRES_AT.toISOString()}
-agent            ${agent.publicKey()}
-merchant basic   ${merchantBasic.publicKey()}
-merchant recent  ${merchantRecent.publicKey()}
-Railway: copy AGENT_SECRET, MERCHANT_BASIC_SECRET, MERCHANT_RECENT_SECRET from ${ENV_FILE}; add this hash to DEVICE_HASHES.
-Never put NOIR_SETUP_OWNER_SECRET on the host.`);
+Add to DEVICE_HASHES in Railway (comma-separated): ${hashes.join(',')}
+Railway also needs AGENT_SECRET, MERCHANT_BASIC_SECRET, MERCHANT_RECENT_SECRET from ${ENV_FILE}. Never put NOIR_SETUP_OWNER_SECRET on the host.`);
 }
 
 main().catch((err) => {
