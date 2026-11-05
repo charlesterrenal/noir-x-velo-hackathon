@@ -3,6 +3,12 @@
 
 export type Freshness = 'flexible' | 'strict';
 
+// Oldest research data each freshness setting accepts. Hours-based because snapshots are collected days apart at most.
+export const MAX_AGE_HOURS: Record<Freshness, number> = { flexible: 30 * 24, strict: 12 };
+
+export const formatAge = (hours: number) =>
+  hours < 1 ? 'under an hour' : hours < 48 ? `${hours} hour${hours === 1 ? '' : 's'}` : `${Math.round(hours / 24)} days`;
+
 export type JobStatus =
   | 'awaiting_payment' // checkout created, waiting for a verified Velo payment.succeeded
   | 'queued' // payment verified, waiting for the worker
@@ -22,6 +28,9 @@ export type OfferSummary = {
   amount: string; // XLM
   snapshotId: string;
   snapshotTakenAt: string; // ISO 8601
+  listings: number; // comparable listings in the snapshot
+  low: string | null; // lowest and highest listing price, PHP
+  high: string | null;
 };
 
 // POST /api/jobs

@@ -2,26 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The GOATS</title>
-    <meta name="description" content="An agent buys price research for your listing and pays for it on Stellar Testnet." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Listo</title>
+    <meta name="description" content="An agent buys price research for your phone and pays the seller itself, on Stellar Testnet." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <header class="top">
-      <span class="brand">The GOATS</span>
-      <span class="net">Runs on Stellar Testnet with test XLM only</span>
+      <div class="wrap">
+        <a class="brand" href="/">LISTO</a>
+        <div id="progress"></div>
+      </div>
     </header>
-    <main class="layout">
-      <section class="work" id="work" aria-live="polite"></section>
-      <aside class="receipt-wrap" id="receipt" aria-label="Receipt"></aside>
-    </main>
+    <main id="app" class="wrap"></main>
+    <button type="button" class="pill" id="pill" hidden></button>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

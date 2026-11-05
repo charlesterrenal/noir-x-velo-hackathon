@@ -1,4 +1,5 @@
-import type { DecisionEntry, Freshness, Listing, OfferSummary } from '@goats/shared';
+import { MAX_AGE_HOURS, formatAge, type DecisionEntry, type Freshness, type Listing, type OfferSummary } from '@goats/shared';
+export { MAX_AGE_HOURS, formatAge };
 import recent from './recent-snapshot.json' with { type: 'json' };
 
 export type MerchantKey = 'basic' | 'recent';
@@ -49,14 +50,14 @@ export const OFFERS: Offer[] = [
   },
 ];
 
-// Oldest snapshot each freshness setting accepts. Hours-based because both snapshots are collected days apart at most.
-export const MAX_AGE_HOURS: Record<Freshness, number> = { flexible: 30 * 24, strict: 12 };
-
-export const formatAge = (hours: number) =>
-  hours < 48 ? `${hours} hour${hours === 1 ? '' : 's'}` : `${Math.round(hours / 24)} days`;
 
 export const ageHours = (offer: Offer, now: Date) =>
   Math.round((now.getTime() - new Date(offer.snapshot.takenAt).getTime()) / 36e5);
+
+function priceRange(o: Offer) {
+  const p = o.snapshot.comparables.map((c) => Number(c.price)).sort((a, b) => a - b);
+  return p.length ? { low: p[0].toFixed(2), high: p[p.length - 1].toFixed(2) } : { low: null, high: null };
+}
 
 export function offerSummaries(): OfferSummary[] {
   return OFFERS.map((o) => ({
@@ -66,6 +67,8 @@ export function offerSummaries(): OfferSummary[] {
     amount: o.amount,
     snapshotId: o.snapshot.id,
     snapshotTakenAt: o.snapshot.takenAt,
+    listings: o.snapshot.comparables.length,
+    ...priceRange(o),
   }));
 }
 
