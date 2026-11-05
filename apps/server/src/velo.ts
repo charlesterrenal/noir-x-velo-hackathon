@@ -28,7 +28,10 @@ export async function handleVeloWebhook(
   try {
     event = await Velo.webhooks.verify({ payload, signature, secret });
   } catch (err) {
-    if (err instanceof VeloWebhookSignatureVerificationError) return { status: 400, body: 'invalid signature' };
+    if (err instanceof VeloWebhookSignatureVerificationError) {
+      console.warn('velo webhook rejected', JSON.stringify({ delivery: deliveryId, reason: err.message }));
+      return { status: 400, body: 'invalid signature' };
+    }
     throw err;
   }
 
