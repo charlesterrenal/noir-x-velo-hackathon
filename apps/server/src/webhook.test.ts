@@ -85,6 +85,13 @@ test('signed payload with non-string project fields still queues; unsigned one d
   assert.equal((await handleVeloWebhook(body, sign(body), 'd7', SECRET)).body, 'queued');
 });
 
+test('dashboard test event is recorded but never queues', async () => {
+  addJob('j4', 'pi_4');
+  const body = paymentEvent('evt_7', 'pi_4').replace('"test":false', '"test":true');
+  assert.equal((await handleVeloWebhook(body, sign(body), 'd8', SECRET)).body, 'test_event');
+  assert.equal(status('j4'), 'awaiting_payment');
+});
+
 test('wrong amount does not queue', async () => {
   addJob('j2', 'pi_2');
   const body = paymentEvent('evt_5', 'pi_2', '0.5');

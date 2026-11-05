@@ -74,6 +74,8 @@ export async function handleVeloWebhook(
       )
       .run(key, event.id, intent?.id ?? null, event.type, event.test ? 1 : 0);
     if (inserted.changes === 0) return 'duplicate';
+    // Real Testnet checkouts arrive with test: false; dashboard sample events with test: true.
+    if (event.test) return 'test_event';
     if (event.type !== 'payment.succeeded' || !intent) return 'ignored';
 
     const job = db
