@@ -3,8 +3,8 @@
 An agent that prices your secondhand phone by buying research from paid data sellers, choosing whom to pay and how much, and paying them itself from a capped Noir allowance on Stellar.
 
 **Live website:** https://listoapp.up.railway.app
-**Demo video (2 min):** _link added after recording_
-**Team:** Charles Vincent P. Terrenal, Marcus Cedric S. Pedrosa, Shanella Maye S. Constantino, Marielle Lois P. Bahuyo (Discord handles to follow)
+**Demo video (2 min):** https://youtu.be/TJXpd783OTc
+**Team:** Charles Vincent P. Terrenal (charlesterrenal), Marcus Cedric S. Pedrosa (da1n_sleif.), Shanella Maye S. Constantino (shantydowp), Marielle Lois P. Bahuyo (marielleb05)
 
 > Runs on Stellar Testnet with test XLM only.
 
