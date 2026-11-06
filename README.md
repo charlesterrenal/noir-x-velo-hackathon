@@ -4,7 +4,7 @@ An agent that prices your secondhand phone by buying research from paid data sel
 
 **Live website:** https://listoapp.up.railway.app
 **Demo video (2 min):** _link added after recording_
-**Team:** _names and Discord handles to follow_
+**Team:** Charles Vincent P. Terrenal, Marcus Cedric S. Pedrosa, Shanella Maye S. Constantino, Marielle Lois P. Bahuyo (Discord handles to follow)
 
 > Runs on Stellar Testnet with test XLM only.
 
